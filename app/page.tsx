@@ -38,6 +38,160 @@ import Globe3D from "./components/Globe3D";
 import RadarChart from "./components/RadarChart";
 import ReportModal from "./components/ReportModal";
 import DigitalTwin from "./components/DigitalTwin";
+import ExecutiveHub from "./components/ExecutiveHub";
+import FounderCommandCenter from "./components/FounderCommandCenter";
+import StakeholderPortals from "./components/StakeholderPortals";
+import ArchitectureAPIs from "./components/ArchitectureAPIs";
+import SystemDocs from "./components/SystemDocs";
+
+function renderTextWithBold(text: string): React.ReactNode[] {
+  const parts = text.split(/\*\*([^*]+)\*\*/g);
+  return parts.map((part, i) => {
+    if (i % 2 === 1) {
+      return <strong key={i} className="text-white font-bold">{part}</strong>;
+    }
+    const italicParts = part.split(/\*([^*]+)\*/g);
+    return italicParts.map((ip, j) => {
+      if (j % 2 === 1) {
+        return <em key={j} className="text-slate-400 italic">{ip}</em>;
+      }
+      return ip;
+    }) as any;
+  }) as any;
+}
+
+function renderFormattedAnswer(text: string): React.ReactNode {
+  const lines = text.split("\n");
+  return (
+    <div className="space-y-2 text-[11px] leading-relaxed font-sans text-slate-200">
+      {lines.map((line, idx) => {
+        const trimmed = line.trim();
+        
+        if (trimmed.startsWith("### ")) {
+          return <h4 key={idx} className="text-xs font-bold text-white border-b border-white/[0.08] pb-1.5 mt-3">{trimmed.replace("### ", "")}</h4>;
+        }
+        if (trimmed.startsWith("#### ")) {
+          return <h5 key={idx} className="text-[10px] font-semibold text-slate-300 mt-2 flex items-center"><span className="w-1.5 h-1.5 bg-[#0a84ff] rounded-full mr-1.5"></span>{trimmed.replace("#### ", "")}</h5>;
+        }
+        
+        if (trimmed.startsWith("- ")) {
+          const content = trimmed.replace("- ", "");
+          return (
+            <div key={idx} className="pl-3 flex items-start space-x-1.5">
+              <span className="text-[#0a84ff] font-bold">•</span>
+              <span>{renderTextWithBold(content)}</span>
+            </div>
+          );
+        }
+
+        if (trimmed.startsWith("|")) {
+          if (trimmed.includes("---")) return null;
+          const cells = trimmed.split("|").map(c => c.trim()).filter(c => c !== "");
+          const isHeader = idx === 0 || (lines[idx - 1] && lines[idx - 1].trim() === "" && lines[idx + 1] && lines[idx + 1].trim().includes("---"));
+          
+          return (
+            <div key={idx} className={`grid grid-cols-4 gap-1.5 px-2 py-1 text-[10px] font-mono border-b border-white/[0.03] ${isHeader ? "text-slate-400 font-bold bg-white/[0.02]" : "text-slate-300"}`}>
+              {cells.map((cell, cIdx) => (
+                <span key={cIdx} className="truncate">{renderTextWithBold(cell)}</span>
+              ))}
+            </div>
+          );
+        }
+
+        if (trimmed === "") return <div key={idx} className="h-0.5" />;
+        
+        return <p key={idx}>{renderTextWithBold(trimmed)}</p>;
+      })}
+    </div>
+  );
+}
+
+function MedalProjectionChart({ data, countryName }: { data: { year: number; projectedGold: number; projectedTotal: number }[]; countryName: string }) {
+  const chartData = data.filter(d => d.year >= 2028);
+  if (chartData.length === 0) return null;
+
+  const width = 500;
+  const height = 150;
+  const padding = 25;
+
+  const maxTotal = Math.max(...chartData.map(d => d.projectedTotal), 10);
+  
+  const getX = (idx: number) => padding + (idx * (width - padding * 2) / (chartData.length - 1));
+  const getY = (val: number) => height - padding - (val * (height - padding * 2) / (maxTotal || 1));
+
+  let goldPath = "";
+  let totalPath = "";
+  
+  chartData.forEach((d, idx) => {
+    const x = getX(idx);
+    const goldY = getY(d.projectedGold);
+    const totalY = getY(d.projectedTotal);
+    
+    if (idx === 0) {
+      goldPath = `M ${x} ${goldY}`;
+      totalPath = `M ${x} ${totalY}`;
+    } else {
+      goldPath += ` L ${x} ${goldY}`;
+      totalPath += ` L ${x} ${totalY}`;
+    }
+  });
+
+  return (
+    <div className="w-full bg-[#121214]/60 border border-white/[0.04] p-4 rounded-2xl flex flex-col justify-between space-y-3 font-sans">
+      <div className="flex justify-between items-center text-[10px] text-slate-400">
+        <span className="font-bold uppercase tracking-wider text-slate-300">Medal Projection ({countryName})</span>
+        <div className="flex space-x-3 font-semibold text-[9px]">
+          <span className="flex items-center text-[#ff9f0a]"><span className="w-1.5 h-1.5 rounded-full bg-[#ff9f0a] mr-1"></span>Golds</span>
+          <span className="flex items-center text-[#0a84ff]"><span className="w-1.5 h-1.5 rounded-full bg-[#0a84ff] mr-1"></span>Totals</span>
+        </div>
+      </div>
+      <div className="relative w-full h-[155px] pt-1">
+        <svg width="100%" height="100%" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none">
+          {/* Grid lines */}
+          {Array.from({ length: 4 }).map((_, i) => {
+            const yVal = (maxTotal / 3) * i;
+            const y = getY(yVal);
+            return (
+              <g key={i}>
+                <line x1={padding} y1={y} x2={width - padding} y2={y} stroke="rgba(255, 255, 255, 0.04)" strokeDasharray="3 3" />
+                <text x={padding - 6} y={y + 2.5} fill="rgba(255, 255, 255, 0.35)" fontSize="8" textAnchor="end" fontFamily="monospace">
+                  {Math.round(yVal)}
+                </text>
+              </g>
+            );
+          })}
+          
+          {/* Paths */}
+          <path d={totalPath} fill="none" stroke="#0a84ff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+          <path d={goldPath} fill="none" stroke="#ff9f0a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+
+          {/* Dots */}
+          {chartData.map((d, idx) => {
+            const x = getX(idx);
+            const goldY = getY(d.projectedGold);
+            const totalY = getY(d.projectedTotal);
+            return (
+              <g key={idx}>
+                <circle cx={x} cy={totalY} r="3.5" fill="#0c0c0e" stroke="#0a84ff" strokeWidth="2" />
+                <circle cx={x} cy={goldY} r="3.5" fill="#0c0c0e" stroke="#ff9f0a" strokeWidth="2" />
+                <text x={x} y={height - 4} fill="rgba(255, 255, 255, 0.5)" fontSize="8" textAnchor="middle">
+                  {d.year}
+                </text>
+                {/* Value tags above top dot */}
+                <text x={x} y={totalY - 8} fill="#0a84ff" fontSize="7" fontWeight="bold" textAnchor="middle" fontFamily="monospace">
+                  {d.projectedTotal}
+                </text>
+                <text x={x} y={goldY - 8} fill="#ff9f0a" fontSize="7" fontWeight="bold" textAnchor="middle" fontFamily="monospace">
+                  {d.projectedGold}
+                </text>
+              </g>
+            );
+          })}
+        </svg>
+      </div>
+    </div>
+  );
+}
 
 export default function Home() {
   // Application State
@@ -54,7 +208,8 @@ export default function Home() {
   const [commentaryText, setCommentaryText] = useState<string>("Neeraj Chopra achieves an 89.94m throw to secure position 1.");
   const [commentaryLang, setCommentaryLang] = useState<"en" | "hi" | "gu" | "fr" | "es">("en");
   const [generatedCommentary, setGeneratedCommentary] = useState<string>("");
-  const [activeTab, setActiveTab] = useState<"dashboard" | "oracle" | "twin" | "records" | "pricing">("dashboard");
+  const [activeTab, setActiveTab] = useState<string>("sports_os");
+  const [sportsOsTab, setSportsOsTab] = useState<"dashboard" | "oracle" | "twin" | "records" | "pricing">("dashboard");
   const [isReportOpen, setIsReportOpen] = useState<boolean>(false);
   const [recordAlert, setRecordAlert] = useState<string | null>(null);
 
@@ -298,28 +453,10 @@ export default function Home() {
     setGptQuery("");
 
     setTimeout(() => {
-      let answer = `Query processed. Telemetry model index match found. Active parameters: Funding: ${(gdpMultiplier * 100).toFixed(0)}%, Recovery: ${(recoveryMultiplier * 100).toFixed(0)}%, Weather Drag: ${(frictionMultiplier * 100).toFixed(0)}%.`;
-      const lowerQuery = query.toLowerCase();
-
-      if (lowerQuery.includes("india vs usa") || lowerQuery.includes("india vs") || lowerQuery.includes("usa vs")) {
-        answer = "Comparison Vector: USA has accumulated 420+ Golds since 1980, primarily driven by swimming and track & field efficiency. India has seen a shift from hockey dominance to individual disciplines (Shooting, Wrestling, Javelin). Under the SPI GDP/Population normalization, India's Growth Potential stands at 94%, indicating a steeper acceleration curve than the USA.";
-      } else if (lowerQuery.includes("2032") || lowerQuery.includes("predict india")) {
-        answer = `KHELAB Oracle prediction for Brisbane 2032 projects India will secure ${Math.round(14 * gdpMultiplier)} to ${Math.round(22 * gdpMultiplier)} medals, with high probability spikes in Shooting (${(4.2 * gdpMultiplier).toFixed(1)} expected medals) and Javelin (${(1.2 * gdpMultiplier).toFixed(1)} expected medals), assuming current GDP sport budget allocations grow at 8.4% annually.`;
-      } else if (lowerQuery.includes("kenya") || lowerQuery.includes("running")) {
-        answer = "Kenya's dominance is driven by: 1. Biomechanical: High running economy (VO2 cost) due to long Achilles tendons. 2. Physiological: High altitude adaptation (>2000m) generating high red blood cell counts. 3. Training: Dynamic group pace training. Oracle estimates Kenya maintains an 84% podium dominance in middle distance running.";
-      } else if (lowerQuery.includes("china") || lowerQuery.includes("diving")) {
-        answer = "China's diving dominance is built on: 1. Core biomechanical training (early entry wrist flexion locks) reducing entry splash. 2. High-density specialized diving academies. 3. Psychological conditioning programs to manage state anxiety under pressure. Data models show China holds a 91% probability of retaining diving sweeps in 2028.";
-      } else if (lowerQuery.includes("neeraj") || lowerQuery.includes("javelin") || lowerQuery.includes("biomechanics of neeraj")) {
-        answer = "Biomechanical telemetry vector analysis for Neeraj Chopra reveals: release velocity 31.8 m/s, shoulder abduction 110°, elbow extension 165°, movement efficiency 96%. These metrics provide an optimal release flight angle of 34°-36° with minimal drag coefficients.";
-      } else if (lowerQuery.includes("leon") || lowerQuery.includes("marchand") || lowerQuery.includes("biomechanics of leon")) {
-        answer = "Biomechanical telemetry vector analysis for Leon Marchand reveals: pool velocity 2.1 m/s, movement efficiency 97%, endurance index 98%. Under-water dolphin kicks extend up to 14.8m with 99% streamline glide retention, minimizing boundary layer turbulence.";
-      } else if (lowerQuery.includes("spi") || lowerQuery.includes("sports power index")) {
-        answer = `Sports Power Index (SPI) ranks nations based on normalized medals against GDP & Population. Currently: USA (#1, SPI: 236.4), China (#2, SPI: 202.9), France (#3, SPI: 104.2), and India (#6, SPI: 67.5). India's lower score reflects high population divisor, but its growth trajectory (+94%) is the highest in the database.`;
-      }
-
+      const answer = KhelabOracle.evaluateOracleQuery(query, selectedCountryId, selectedAthleteId);
       setGptChat((prev) => [...prev, { query, answer }]);
       setGptLoading(false);
-    }, 1200);
+    }, 800);
   };
 
   const handleGenerateCommentary = () => {
@@ -414,54 +551,64 @@ export default function Home() {
         {/* Global Navigation Tabs (Apple Segmented Control Style) */}
         <nav className="flex space-x-1 bg-white/[0.04] p-1 rounded-full border border-white/[0.06] backdrop-blur-xl my-3 md:my-0">
           <button
-            onClick={() => setActiveTab("dashboard")}
+            onClick={() => setActiveTab("sports_os")}
             className={`px-4 py-1.5 rounded-full text-xs font-semibold cursor-pointer tab-transition ${
-              activeTab === "dashboard"
+              activeTab === "sports_os"
                 ? "bg-white text-black shadow-sm"
                 : "text-slate-400 hover:text-slate-200"
             }`}
           >
-            Dashboard
+            Sports OS
           </button>
           <button
-            onClick={() => setActiveTab("twin")}
+            onClick={() => setActiveTab("executive_hub")}
             className={`px-4 py-1.5 rounded-full text-xs font-semibold cursor-pointer tab-transition ${
-              activeTab === "twin"
+              activeTab === "executive_hub"
                 ? "bg-white text-black shadow-sm"
                 : "text-slate-400 hover:text-slate-200"
             }`}
           >
-            Digital Twin
+            Executive Hub
           </button>
           <button
-            onClick={() => setActiveTab("oracle")}
+            onClick={() => setActiveTab("founder_command")}
             className={`px-4 py-1.5 rounded-full text-xs font-semibold cursor-pointer tab-transition ${
-              activeTab === "oracle"
+              activeTab === "founder_command"
                 ? "bg-white text-black shadow-sm"
                 : "text-slate-400 hover:text-slate-200"
             }`}
           >
-            AI Oracle
+            Founder Command
           </button>
           <button
-            onClick={() => setActiveTab("records")}
+            onClick={() => setActiveTab("stakeholders")}
             className={`px-4 py-1.5 rounded-full text-xs font-semibold cursor-pointer tab-transition ${
-              activeTab === "records"
+              activeTab === "stakeholders"
                 ? "bg-white text-black shadow-sm"
                 : "text-slate-400 hover:text-slate-200"
             }`}
           >
-            Records Vault
+            Portals
           </button>
           <button
-            onClick={() => setActiveTab("pricing")}
+            onClick={() => setActiveTab("tech_architecture")}
             className={`px-4 py-1.5 rounded-full text-xs font-semibold cursor-pointer tab-transition ${
-              activeTab === "pricing"
+              activeTab === "tech_architecture"
                 ? "bg-white text-black shadow-sm"
                 : "text-slate-400 hover:text-slate-200"
             }`}
           >
-            Khelab Pro
+            Blueprints
+          </button>
+          <button
+            onClick={() => setActiveTab("system_docs")}
+            className={`px-4 py-1.5 rounded-full text-xs font-semibold cursor-pointer tab-transition ${
+              activeTab === "system_docs"
+                ? "bg-white text-black shadow-sm"
+                : "text-slate-400 hover:text-slate-200"
+            }`}
+          >
+            Docs
           </button>
         </nav>
 
@@ -497,8 +644,58 @@ export default function Home() {
         </div>
       </div>
 
+      {/* Sub-navigation for Sports OS */}
+      {activeTab === "sports_os" && (
+        <div className="px-6 py-2 bg-white/[0.02] border-b border-white/[0.04] flex items-center space-x-4 text-xs z-20">
+          <span className="text-slate-500 uppercase tracking-widest text-[9px] font-bold">OS Navigation:</span>
+          <div className="flex space-x-1">
+            <button
+              onClick={() => setSportsOsTab("dashboard")}
+              className={`px-3 py-1 rounded-md transition-all cursor-pointer font-semibold ${
+                sportsOsTab === "dashboard" ? "bg-white/10 text-white" : "text-slate-400 hover:text-slate-200"
+              }`}
+            >
+              Dashboard
+            </button>
+            <button
+              onClick={() => setSportsOsTab("twin")}
+              className={`px-3 py-1 rounded-md transition-all cursor-pointer font-semibold ${
+                sportsOsTab === "twin" ? "bg-white/10 text-white" : "text-slate-400 hover:text-slate-200"
+              }`}
+            >
+              Digital Twin
+            </button>
+            <button
+              onClick={() => setSportsOsTab("oracle")}
+              className={`px-3 py-1 rounded-md transition-all cursor-pointer font-semibold ${
+                sportsOsTab === "oracle" ? "bg-white/10 text-white" : "text-slate-400 hover:text-slate-200"
+              }`}
+            >
+              AI Oracle
+            </button>
+            <button
+              onClick={() => setSportsOsTab("records")}
+              className={`px-3 py-1 rounded-md transition-all cursor-pointer font-semibold ${
+                sportsOsTab === "records" ? "bg-white/10 text-white" : "text-slate-400 hover:text-slate-200"
+              }`}
+            >
+              Records Vault
+            </button>
+            <button
+              onClick={() => setSportsOsTab("pricing")}
+              className={`px-3 py-1 rounded-md transition-all cursor-pointer font-semibold ${
+                sportsOsTab === "pricing" ? "bg-white/10 text-white" : "text-slate-400 hover:text-slate-200"
+              }`}
+            >
+              Khelab Pro
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Main Grid View */}
-      <main className="flex-1 p-6 grid grid-cols-1 xl:grid-cols-4 gap-6 z-10">
+      {activeTab === "sports_os" && (
+        <main className="flex-1 p-6 grid grid-cols-1 xl:grid-cols-4 gap-6 z-10">
 
         {/* ================= COLUMN 1: LIVE FEED & SPI LEADERBOARD ================= */}
         <div className="xl:col-span-1 space-y-6 flex flex-col">
@@ -646,7 +843,7 @@ export default function Home() {
         {/* ================= COLUMN 2 & 3: MAIN DISPLAY WORKSPACE ================= */}
         <div className="xl:col-span-2 space-y-6 flex flex-col">
           
-          {activeTab === "dashboard" && (
+          {sportsOsTab === "dashboard" && (
             <>
               {/* 3D Globe Visualizer */}
               <div className="h-[400px] xl:h-[450px] relative">
@@ -667,15 +864,15 @@ export default function Home() {
                   </div>
 
                   {/* Chat window */}
-                  <div className="flex-1 space-y-3 overflow-y-auto max-h-[160px] pr-1.5 text-[11px] font-sans">
+                  <div className="flex-1 space-y-3 overflow-y-auto max-h-[240px] pr-1.5 text-[11px] font-sans">
                     {gptChat.map((chat, idx) => (
-                      <div key={idx} className="space-y-1">
+                      <div key={idx} className="space-y-1.5">
                         <div className="flex items-start space-x-1.5 text-white font-semibold">
                           <ChevronRight className="w-3 h-3 mt-0.5 text-slate-400" />
                           <span>{chat.query}</span>
                         </div>
-                        <div className="pl-4 text-slate-300 leading-relaxed bg-white/[0.01] p-2.5 rounded-xl border border-white/[0.04]">
-                          {chat.answer}
+                        <div className="pl-4 text-slate-300 leading-relaxed bg-white/[0.01] p-3 rounded-xl border border-white/[0.04] overflow-x-auto">
+                          {renderFormattedAnswer(chat.answer)}
                         </div>
                       </div>
                     ))}
@@ -795,11 +992,11 @@ export default function Home() {
             </>
           )}
 
-          {activeTab === "twin" && (
+          {sportsOsTab === "twin" && (
             <DigitalTwin activeAthlete={activeAthlete} />
           )}
 
-          {activeTab === "oracle" && (
+          {sportsOsTab === "oracle" && (
             <div className="glassmorphic rounded-2xl p-6 space-y-6 flex-1 text-[#f5f5f7]">
               <div className="border-b border-white/[0.06] pb-3 flex justify-between items-center">
                 <div>
@@ -894,21 +1091,8 @@ export default function Home() {
 
               {/* Secondary block: LSTM Future Medal Projections */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 border-t border-white/[0.06] pt-5">
-                <div className="p-4 bg-white/[0.01] rounded-2xl border border-white/[0.04] space-y-2">
-                  <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                    LSTM Projected Medal Curve ({activeCountry.name})
-                  </h4>
-                  <div className="space-y-2.5 mt-3 text-xs font-sans">
-                    {predictedTimeline.filter((t) => t.year >= 2028).map((t, idx) => (
-                      <div key={idx} className="flex justify-between items-center p-2 bg-white/[0.01] rounded-xl border border-white/[0.04]">
-                        <span className="text-slate-300 font-medium">{t.year} LA / Brisbane</span>
-                        <div className="flex space-x-3 text-[10px]">
-                          <span className="text-[#ff9f0a] font-bold">{t.projectedGold} Golds</span>
-                          <span className="text-[#0a84ff] font-bold">{t.projectedTotal} Total</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                <div className="md:col-span-1">
+                  <MedalProjectionChart data={predictedTimeline} countryName={activeCountry.name} />
                 </div>
 
                 <div className="p-4 bg-white/[0.01] border border-white/[0.04] rounded-2xl space-y-2.5 md:col-span-2">
@@ -941,7 +1125,7 @@ export default function Home() {
             </div>
           )}
 
-          {activeTab === "records" && (
+          {sportsOsTab === "records" && (
             <div className="glassmorphic rounded-2xl p-6 space-y-6 flex-1 text-[#f5f5f7]">
               <div className="border-b border-white/[0.06] pb-3 flex justify-between items-center">
                 <div>
@@ -997,7 +1181,7 @@ export default function Home() {
             </div>
           )}
 
-          {activeTab === "pricing" && (
+          {sportsOsTab === "pricing" && (
             <div className="glassmorphic rounded-2xl p-6 space-y-6 flex-1 text-[#f5f5f7]">
               <div className="border-b border-white/[0.06] pb-3 text-center">
                 <h3 className="text-sm font-semibold tracking-tight text-white inline-flex items-center justify-center">
@@ -1296,6 +1480,37 @@ export default function Home() {
         </div>
 
       </main>
+      )}
+
+      {activeTab === "executive_hub" && (
+        <main className="flex-1 p-6 z-10 flex flex-col">
+          <ExecutiveHub />
+        </main>
+      )}
+
+      {activeTab === "founder_command" && (
+        <main className="flex-1 p-6 z-10 flex flex-col">
+          <FounderCommandCenter />
+        </main>
+      )}
+
+      {activeTab === "stakeholders" && (
+        <main className="flex-1 p-6 z-10 flex flex-col">
+          <StakeholderPortals />
+        </main>
+      )}
+
+      {activeTab === "tech_architecture" && (
+        <main className="flex-1 p-6 z-10 flex flex-col">
+          <ArchitectureAPIs />
+        </main>
+      )}
+
+      {activeTab === "system_docs" && (
+        <main className="flex-1 p-6 z-10 flex flex-col">
+          <SystemDocs />
+        </main>
+      )}
 
       {/* Footer System Info */}
       <footer className="border-t border-white/[0.06] px-6 py-4 flex flex-col md:flex-row justify-between items-center text-[10px] text-slate-500 font-sans z-10 relative">
